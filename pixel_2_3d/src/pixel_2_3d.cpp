@@ -172,7 +172,7 @@ namespace pixel_2_3d {
 
         // Compute normals
         pcl::PointCloud<pcl::Normal>::Ptr normals_ptr(new pcl::PointCloud<pcl::Normal>());
-        pcl::KdTree<PRGB>::Ptr normals_tree (new pcl::KdTreeFLANN<PRGB> ());
+        pcl::search::KdTree<PRGB>::Ptr normals_tree (new pcl::search::KdTree<PRGB> ());
         pcl::PointCloud<PRGB> mls_points;
         pcl::MovingLeastSquares<PRGB, pcl::Normal> mls;
         normals_tree->setInputCloud(near_pts);
