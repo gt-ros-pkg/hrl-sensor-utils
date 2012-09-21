@@ -1,4 +1,4 @@
-#include <numeric>
+//#include <numeric>
 #include <ros/ros.h>
 #include <algorithm>
 
@@ -189,14 +189,22 @@ namespace pixel_2_3d {
         double nz = normals_ptr->points[closest_ind].normal[2];
         double dot = nx*pt3d_trans.point.x + ny*pt3d_trans.point.y + nz*pt3d_trans.point.z;
         if(dot > 0) { nx = -nx; ny = -ny; nz = -nz; }
-        double j = std::sqrt(1/(1+ny*ny/(nz*nz)));
-        double k = -ny*j/nz;
-        btMatrix3x3 M (0,  ny*k - nz*j,  nx,      
-                       j,  -nx*k,        ny,      
-                       k,  nx*j,         nz);
-
-        btQuaternion quat;
-        M.getRotation(quat);
+       
+        //Phil's update, now returns direction of pose (x-axis) along normal
+        btVector3 normal_vec(nx,ny,nz);
+        btVector3 x_axis(1.0,0.0,0.0);
+        btVector3 axis = x_axis.cross(normal_vec);
+        double angle = x_axis.angle(normal_vec);
+        btQuaternion quat(axis, angle);
+        
+        //Kelsey's solution, returns Z-axis of quaternion along normal
+        //double j = std::sqrt(1/(1+ny*ny/(nz*nz)));
+        //double k = -ny*j/nz;
+        //btMatrix3x3 M (0,  ny*k - nz*j,  nx,      
+        //               j,  -nx*k,        ny,      
+        //               k,  nx*j,         nz);
+        //btQuaternion quat;
+        //M.getRotation(quat);
 
         geometry_msgs::PoseStamped pt3d_pose;
         pt3d_pose.header.frame_id = cur_pc->header.frame_id;
@@ -222,9 +230,11 @@ namespace pixel_2_3d {
         resp.pixel3d.pose.orientation.z = pt3d_pose.pose.orientation.z;
         resp.pixel3d.pose.orientation.w = pt3d_pose.pose.orientation.w;
         pt3d_pub.publish(pt3d_pose);
-        ROS_INFO("[pixel_2_3d] Pixel (%d, %d) converted to point at (%f, %f, %f) in %s.",
+        ROS_INFO("[pixel_2_3d] Pixel (%d, %d) converted to pose (%f, %f, %f), (%f, %f, %f, %f) in %s",
                  req.pixel_u, req.pixel_v, 
                  pt3d_pose.pose.position.x, pt3d_pose.pose.position.y, pt3d_pose.pose.position.z,
+                 pt3d_pose.pose.orientation.x, pt3d_pose.pose.orientation.y,
+                 pt3d_pose.pose.orientation.z, pt3d_pose.pose.orientation.w,
                  output_frame.c_str());
         return true;
     }

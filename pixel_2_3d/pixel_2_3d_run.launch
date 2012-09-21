@@ -3,8 +3,8 @@
         <remap from="image" to="/kinect_head/rgb/image_color"/>
         <remap from="point_cloud" to="/kinect_head/rgb/points"/>
         <remap from="l_mouse_click" to="/clickable_display/l_mouse_click"/>
-        <param name="normal_radius" type="double" value="0.025" />
-        <param name="output_frame" value="/base_link"/>
+        <param name="normal_radius" type="double" value="0.035" />
+        <param name="output_frame" value="/openni_rgb_optical_frame"/>
         <param name="use_closest_pixel" value="True"/>
     </node>
 </launch>
