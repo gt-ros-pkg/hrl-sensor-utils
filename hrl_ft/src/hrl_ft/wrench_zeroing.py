@@ -185,8 +185,8 @@ class WrenchZeroer(object):
 
         self.msg_lock = Lock()
         self.last_msg_time = 0.
-        rospy.sleep(0.1)
         rospy.Subscriber(wrench_topic, WrenchStamped, self.save_cur_msg, queue_size=1)
+        rospy.sleep(0.5)
 
     def save_cur_msg(self, msg):
         with self.msg_lock:
@@ -195,9 +195,9 @@ class WrenchZeroer(object):
 
     def _process_wrench(self, te):
         with self.msg_lock:
-            if rospy.get_time() - self.last_msg_time > 0.1:
-                rospy.loginfo("[wrench_zeroing]: Msg data over 100ms old, not publishing.");
-                return
+            #if rospy.get_time() - self.last_msg_time > 0.1:
+                #rospy.loginfo("[wrench_zeroing]: Msg data over 100ms old, not publishing.");
+            #    return
             cur_wrench = np.mat([self.cur_msg.wrench.force.x, 
                                  self.cur_msg.wrench.force.y, 
                                  self.cur_msg.wrench.force.z, 
@@ -208,17 +208,20 @@ class WrenchZeroer(object):
         try:
             now = rospy.Time.now()
             self.tf_list.waitForTransform(self.gravity_frame, self.wrench_frame, 
-                                            now, rospy.Duration(0.5))
+                                            now, rospy.Duration(2))
             (ft_pos, ft_quat) = self.tf_list.lookupTransform(self.gravity_frame, 
                                                              self.wrench_frame, now)
         except tf.LookupException as le:
-            rospy.loginfo("TF Failure: \r\n %s,\r\n %s" %(sys.exc_info()[0], le))
+            rospy.loginfo("[wrench zeroing] TF Failure: \r\n %s,\r\n %s" %(sys.exc_info()[0], le))
             return
         except tf.ExtrapolationException as ee:
-            rospy.loginfo("TF Failure:\r\n %s,\r\n%s" %(sys.exc_info()[0], ee))
+            rospy.loginfo("[wrench zeroing] TF Failure:\r\n %s,\r\n%s" %(sys.exc_info()[0], ee))
+            return
+        except tf.Exception as tfe:
+#            rospy.loginfo("[wrench_zeroing]: TF failure:\r\n%s, \r\n%s" %(sys.exc_info()[0], tfe))
             return
         except:
-            rospy.loginfo("[wrench_zeroing]: TF Failure:\r\n%s"%sys.exc_info()[0])
+            rospy.loginfo("[wrench_zeroing]: Unknown TF failure:\r\n%s" %sys.exc_info()[0])
             return
         rot_mat = np.mat(tf_trans.quaternion_matrix(ft_quat))[:3,:3]
         z_grav = self.react_mult * rot_mat.T * np.mat([0, 0, -1.]).T
@@ -241,7 +244,7 @@ class WrenchZeroer(object):
                                  Wrench(Vector3(*tf_zeroed_wrench[:3,0]), 
                                         Vector3(*tf_zeroed_wrench[3:,0])))
         self.zero_pub.publish(zero_msg)
-        self.visualize_wrench(tf_zeroed_wrench)
+        #self.visualize_wrench(tf_zeroed_wrench)
         
 
     def transform_wrench(self, wrench):
