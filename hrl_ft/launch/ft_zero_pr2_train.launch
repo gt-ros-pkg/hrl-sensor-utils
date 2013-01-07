@@ -1,6 +1,6 @@
 <launch>
     <arg name="tool" />
-    <node pkg="hrl_netft" name="pr2_netft_zeroer" type="netft_zeroing.py" 
-          args="-l -p -b -t -f $(find hrl_netft)/params/ft_zero_params_$(arg tool).yaml"
+    <node pkg="hrl_ft" name="pr2_netft_zeroer" type="netft_zeroing.py" 
+          args="-l -p -b -t -f $(find hrl_ft)/params/ft_zero_params_$(arg tool).yaml"
           output="screen" />
 </launch>
