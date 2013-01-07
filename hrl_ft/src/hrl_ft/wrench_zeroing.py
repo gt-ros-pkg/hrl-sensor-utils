@@ -34,12 +34,11 @@ class WrenchListener(object):
 
 def collect_data_pr2(n_4, n_5, n_6):
     roslib.load_manifest("hrl_pr2_arms")
-    from hrl_pr2_arms.pr2_arm import PR2ArmJointTrajectory, create_pr2_arm
+    from hrl_pr2_arms.pr2_arm_joint_traj import PR2ArmJointTraj, create_ep_arm
     wrench_topic = rospy.get_param("~wrench_topic")
     gravity_frame = rospy.get_param("~gravity_frame")
     wrench_frame = rospy.get_param("~wrench_frame")
-    jnt_arm = create_pr2_arm('l', arm_type=PR2ArmJointTrajectory)
-    kin = jnt_arm.kinematics
+    jnt_arm = create_ep_arm('l', arm_type=PR2ArmJointTraj)
     wrench_list = WrenchListener(wrench_topic)
     tf_list = tf.TransformListener()
 

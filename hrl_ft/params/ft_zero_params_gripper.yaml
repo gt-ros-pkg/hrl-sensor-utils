@@ -3,4 +3,4 @@
   mass: 1.0207469045830115, torque_zero_x: -0.41079531452779661, torque_zero_y: -0.42981368508426238,
   torque_zero_z: -0.23186995135336111, wrench_base_frame: "torso_lift_link", 
   wrench_location_frame: "l_gripper_tool_frame", wrench_topic: "/ft/l_gripper_motor", 
-  wrench_frame: "/l_netft_frame", gravity_frame: "/torso_lift_link" }
+  wrench_frame: "/l_force_torque_link", gravity_frame: "/torso_lift_link" }
