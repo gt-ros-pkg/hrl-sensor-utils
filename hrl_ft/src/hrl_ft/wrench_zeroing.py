@@ -25,10 +25,10 @@ class WrenchListener(object):
         rospy.Subscriber(wrench_topic, WrenchStamped, self.record_wrench)
 
     def record_wrench(self, msg):
-        self.cur_wrench = [msg.wrench.force.x, 
-                           msg.wrench.force.y, 
-                           msg.wrench.force.z, 
-                           msg.wrench.torque.x, 
+        self.cur_wrench = [msg.wrench.force.x,
+                           msg.wrench.force.y,
+                           msg.wrench.force.z,
+                           msg.wrench.torque.x,
                            msg.wrench.torque.y, 
                            msg.wrench.torque.z]
 
@@ -197,18 +197,18 @@ class WrenchZeroer(object):
             #if rospy.get_time() - self.last_msg_time > 0.1:
                 #rospy.loginfo("[wrench_zeroing]: Msg data over 100ms old, not publishing.");
             #    return
-            cur_wrench = np.mat([self.cur_msg.wrench.force.x, 
-                                 self.cur_msg.wrench.force.y, 
-                                 self.cur_msg.wrench.force.z, 
-                                 self.cur_msg.wrench.torque.x, 
-                                 self.cur_msg.wrench.torque.y, 
+            cur_wrench = np.mat([self.cur_msg.wrench.force.x,
+                                 self.cur_msg.wrench.force.y,
+                                 self.cur_msg.wrench.force.z,
+                                 self.cur_msg.wrench.torque.x,
+                                 self.cur_msg.wrench.torque.y,
                                  self.cur_msg.wrench.torque.z]).T
             header = self.cur_msg.header
         try:
             now = rospy.Time.now()
-            self.tf_list.waitForTransform(self.gravity_frame, self.wrench_frame, 
+            self.tf_list.waitForTransform(self.gravity_frame, self.wrench_frame,
                                             now, rospy.Duration(2))
-            (ft_pos, ft_quat) = self.tf_list.lookupTransform(self.gravity_frame, 
+            (ft_pos, ft_quat) = self.tf_list.lookupTransform(self.gravity_frame,
                                                              self.wrench_frame, now)
         except tf.LookupException as le:
             rospy.loginfo("[wrench zeroing] TF Failure: \r\n %s,\r\n %s" %(sys.exc_info()[0], le))
@@ -230,7 +230,7 @@ class WrenchZeroer(object):
         torque_grav[3:, 0] = np.mat(np.cross(self.com_pos.T.A[0], force_grav[:3, 0].T.A[0])).T
         zeroing_wrench = force_grav + torque_grav + self.wrench_zero
         zeroed_wrench = self.react_mult * (cur_wrench - zeroing_wrench)
-        
+
         if not self.got_zero:
             self.wrench_zero = (cur_wrench - (force_grav + torque_grav))
             self.got_zero = True
@@ -239,18 +239,17 @@ class WrenchZeroer(object):
         if tf_zeroed_wrench is None:
             rospy.loginfo("Second TF Fail")
             return
-        zero_msg = WrenchStamped(header, 
-                                 Wrench(Vector3(*tf_zeroed_wrench[:3,0]), 
+        zero_msg = WrenchStamped(header,
+                                 Wrench(Vector3(*tf_zeroed_wrench[:3,0]),
                                         Vector3(*tf_zeroed_wrench[3:,0])))
         self.zero_pub.publish(zero_msg)
-        #self.visualize_wrench(tf_zeroed_wrench)
-        
+        self.visualize_wrench(tf_zeroed_wrench)
 
     def transform_wrench(self, wrench):
         try:
-            ft_pos, ft_quat = self.tf_list.lookupTransform(self.gravity_frame, 
+            ft_pos, ft_quat = self.tf_list.lookupTransform(self.gravity_frame,
                                                            self.wrench_frame, rospy.Time(0))
-            loc_pos, loc_quat = self.tf_list.lookupTransform(self.gravity_frame, 
+            loc_pos, loc_quat = self.tf_list.lookupTransform(self.gravity_frame,
                                                              self.wrench_location_frame, rospy.Time(0))
             base_pos, base_quat = self.tf_list.lookupTransform(self.wrench_base_frame,
                                                                self.wrench_frame, rospy.Time(0))
@@ -269,7 +268,7 @@ class WrenchZeroer(object):
 
     def visualize_wrench(self, wrench):
         try:
-            loc_pos, loc_quat = self.tf_list.lookupTransform(self.wrench_base_frame, 
+            loc_pos, loc_quat = self.tf_list.lookupTransform(self.wrench_base_frame,
                                                              self.wrench_location_frame, rospy.Time(0))
         except:
             return
