@@ -29,7 +29,7 @@ class WrenchToMarker(object):
         force_vec.type = 0
         force_vec.scale.x = 0.1
         force_vec.scale.y = 0.2
-        force_vec.scale.z = 1
+        force_vec.scale.z = 0.1
         force_vec.color.a = 0.75
         force_vec.color.r = 0.0
         force_vec.color.g = 1.0

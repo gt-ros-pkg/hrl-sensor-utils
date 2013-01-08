@@ -1,6 +1,6 @@
-{com_pos_x: -0.0012628567508067693, com_pos_y: 0.0017608807708057572, com_pos_z: -0.085322945903206882,
-  force_zero_x: 6.2541785511793826, force_zero_y: -13.457402800903722, force_zero_z: 4.9924823051962166,
-  mass: 1.0207469045830115, torque_zero_x: -0.41079531452779661, torque_zero_y: -0.42981368508426238,
-  torque_zero_z: -0.23186995135336111, wrench_base_frame: "torso_lift_link", 
-  wrench_location_frame: "l_gripper_tool_frame", wrench_topic: "/ft/l_gripper_motor", 
-  wrench_frame: "/l_force_torque_link", gravity_frame: "/torso_lift_link" }
+{com_pos_x: 0.0013258587988480895, com_pos_y: 0.0026302535864371488, com_pos_z: -0.085809270431239065,
+  force_zero_x: 0.079653404462543889, force_zero_y: -10.630966634925553, force_zero_z: 8.6862365268453807,
+  gravity_frame: /torso_lift_link, mass: 0.96626364895541306, torque_zero_x: -0.17781475607570035,
+  torque_zero_y: -0.52410434226698499, torque_zero_z: -0.00025248623999833675, wrench_base_frame: torso_lift_link,
+  wrench_frame: /l_force_torque_link, wrench_location_frame: l_gripper_tool_frame,
+  wrench_topic: /ft/l_gripper_motor}
