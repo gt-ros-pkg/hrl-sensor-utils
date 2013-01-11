@@ -12,11 +12,11 @@ import rospy
 import rosparam
 import tf
 import tf.transformations as tf_trans
-from geometry_msgs.msg import WrenchStamped, Wrench, Vector3, Point
+from geometry_msgs.msg import WrenchStamped, Wrench, Vector3, Point, Quaternion, Pose, PoseArray
 from std_msgs.msg import Float64, Bool, ColorRGBA
 from visualization_msgs.msg import Marker
 
-g = 9.81
+g = 9.80665
 
 class WrenchListener(object):
 
@@ -51,6 +51,7 @@ def collect_data_pr2(n_4, n_5, n_6):
     rospy.sleep(8.)
 
     data = []
+    pose_array_pub = rospy.Publisher('wrench_train_poses', PoseArray, latch=True)
 
     q_cur = q_setup
     for q_4 in q_4_vals:
@@ -62,10 +63,21 @@ def collect_data_pr2(n_4, n_5, n_6):
                 jnt_arm.set_ep(q_cur, 2.)
                 rospy.sleep(4.)
                 (trans, rot) = tf_list.lookupTransform(gravity_frame, wrench_frame, rospy.Time(0))
-                data.append((copy.copy(wrench_list.cur_wrench), rot))
+                datum = (copy.copy(wrench_list.cur_wrench), rot)
+                data.append(datum)
+                print  "Wrench: %s\r\nOrient: %s" %(datum[0], datum[1])
                 if rospy.is_shutdown():
                     return
-    print "Wrench, orientation data", data
+    poses = []
+    for datum in data:
+        p = Pose(Point(0,0,0), Quaternion(*datum[1]))
+        poses.append(copy.copy(p))
+    pa = PoseArray()
+    pa.header.frame_id = wrench_frame
+    pa.header.stamp = rospy.Time.now()
+    pa.poses = poses
+    pose_array_pub.publish(pa)
+    raw_input('holding to catch pose array. Press ENTER to continue.')
     return data
 
 def collect_data_tool():
