@@ -105,12 +105,12 @@ def process_data(data, is_backwards):
         react_mult = -1.
     else:
         react_mult = 1.
-    for w, quat in data:
-        wf_chain.extend(w[:3])
-        rot_mat = np.mat(tf_trans.quaternion_matrix(quat))[:3,:3]
-        z_grav = react_mult * rot_mat.T * np.mat([0, 0, -1.]).T
-        z_x, z_y, z_z = z_grav.T.A[0]
-        grav_chain.append([g * z_x, 1, 0, 0])
+    for w, quat in data: #For wrench, wrist orientation in data list
+        wf_chain.extend(w[:3]) #Add wrench force complnents to list
+        rot_mat = np.mat(tf_trans.quaternion_matrix(quat))[:3,:3] #get rot matrix from quaternion from grav frame to wrench frame
+        z_grav = react_mult * rot_mat.T * np.mat([0, 0, -1.]).T #Get Gravity unit vector in wrench frame
+        z_x, z_y, z_z = z_grav.T.A[0] #Get components of gravity vector
+        grav_chain.append([g * z_x, 1, 0, 0]) #add 
         grav_chain.append([g * z_y, 0, 1, 0])
         grav_chain.append([g * z_z, 0, 0, 1])
 
