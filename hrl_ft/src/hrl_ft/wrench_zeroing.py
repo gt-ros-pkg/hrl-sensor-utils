@@ -29,7 +29,7 @@ class WrenchListener(object):
                            msg.wrench.force.y,
                            msg.wrench.force.z,
                            msg.wrench.torque.x,
-                           msg.wrench.torque.y, 
+                           msg.wrench.torque.y,
                            msg.wrench.torque.z]
 
 def collect_data_pr2(n_4, n_5, n_6):
@@ -114,26 +114,51 @@ def process_data(data, is_backwards):
         grav_chain.append([g * z_y, 0, 1, 0])
         grav_chain.append([g * z_z, 0, 0, 1])
 
+    #############################################
+    #Solve Ax=b for x. x=[x1, x2, x3, x4].T
+    #For every 3 rows in A,b -> Ax=b gives:
+    #grav_x*x1 + x2 = force_x
+    #grav_y*x1 + x3 = force_y
+    #grav_z*x1 + x4 = force_z
+    #x1=mass
+    #x2 = offset in force_x signal
+    #x3 = offset in force_y signal
+    #x4 = offset in force_z signal
     b_w = np.mat(wf_chain).T
     A_g = np.mat(grav_chain)
     x_p, res_p, _, _ = np.linalg.lstsq(A_g, b_w)
+    ################################################
 
     mass = x_p[0,0]
 
     wt_chain = []
     torque_chain = []
     for w, quat in data:
-        wt_chain.extend(w[3:])
+        wt_chain.extend(w[3:]) #Add torque readings to 3*Nx1 matrix (N is number of data points)
         rot_mat = np.mat(tf_trans.quaternion_matrix(quat))[:3,:3]
-        z_grav = react_mult * rot_mat.T * np.mat([0, 0, -1.]).T
-        force_grav = mass * g * z_grav
+        z_grav = react_mult * rot_mat.T * np.mat([0, 0, -1.]).T #Get vector for idealized gravity (-z in gravity frame) in wrench frame
+        force_grav = mass * g * z_grav #Ideal Force of gravity along each axis
         f_x, f_y, f_z = force_grav.T.A[0]
-        torque_chain.append([0, f_z, -f_y, 1, 0, 0])
+        torque_chain.append([0, f_z, -f_y, 1, 0, 0]) #Build 3*nx6 matrix of torque components, offsets
         torque_chain.append([-f_z, 0, f_x, 0, 1, 0])
         torque_chain.append([f_y, -f_x, 0, 0, 0, 1])
+
+    ##################################################
+    #Solve Ax=b for x. x=[x1,x2,x3,x4,x5,c6].T
+    #For every 3 rows in A,b -> Ax=b gives:
+    #torque_x = fz*x2 - fy*x3 + x4 (force in +z x COM offset in y gives torque in +x, f in -y x COM offset z, plus signal offset)
+    #torque_y = fz*x1 - fy*x3 + x5
+    #torque_z = fz*x1 - fy*x2 + x6
+    #x1 = COM offset in x
+    #x2 = COM offset in y
+    #x3 = COM offset in z
+    #x4 = offset in x torque signal
+    #x5 = offset in y torque signal
+    #x6 = offset in z torque signal
     b_t = np.mat(wt_chain).T
     A_t = np.mat(torque_chain)
     x_t, res_t, _, _ = np.linalg.lstsq(A_t, b_t)
+    ###################################################
 
     print "Force residues:", res_p
     print "Torque residues:", res_t
