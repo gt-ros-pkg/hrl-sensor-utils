@@ -19,7 +19,6 @@ from visualization_msgs.msg import Marker
 g = 9.80665
 
 class WrenchListener(object):
-
     def __init__(self, wrench_topic):
         self.cur_wrench = WrenchStamped()
         rospy.Subscriber(wrench_topic, WrenchStamped, self.record_wrench)
@@ -110,7 +109,7 @@ def process_data(data, is_backwards):
         rot_mat = np.mat(tf_trans.quaternion_matrix(quat))[:3,:3] #get rot matrix from quaternion from grav frame to wrench frame
         z_grav = react_mult * rot_mat.T * np.mat([0, 0, -1.]).T #Get Gravity unit vector in wrench frame
         z_x, z_y, z_z = z_grav.T.A[0] #Get components of gravity vector
-        grav_chain.append([g * z_x, 1, 0, 0]) #add 
+        grav_chain.append([g * z_x, 1, 0, 0]) #add
         grav_chain.append([g * z_y, 0, 1, 0])
         grav_chain.append([g * z_z, 0, 0, 1])
 

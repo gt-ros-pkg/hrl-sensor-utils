@@ -1,6 +1,6 @@
 <launch>
-    <arg name="tool" />
+    <arg name="tool" default="gripper"/>
     <node pkg="hrl_ft" name="pr2_netft_zeroer" type="wrench_zeroing.py" 
-          args="-l -b -r -z -f $(find hrl_ft)/params/ft_zero_params_$(arg tool).yaml"
+          args="-l -r -z --rate 100 -f $(find hrl_ft)/params/ft_zero_params_$(arg tool).yaml"
           output="screen" />
 </launch>
