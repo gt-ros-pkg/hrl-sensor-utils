@@ -242,19 +242,17 @@ class WrenchZeroer(object):
                                  self.cur_msg.wrench.torque.z]).T
             header = self.cur_msg.header
         try:
-            now = rospy.Time.now()
-            self.tf_list.waitForTransform(self.gravity_frame, self.wrench_frame,
-                                            now, rospy.Duration(2))
             (ft_pos, ft_quat) = self.tf_list.lookupTransform(self.gravity_frame,
-                                                             self.wrench_frame, now)
+                                                             self.wrench_frame,
+                                                             rospy.Time(0))
         except tf.LookupException as le:
-            rospy.loginfo("[wrench zeroing] TF Failure: \r\n %s,\r\n %s" %(sys.exc_info()[0], le))
+            #rospy.loginfo("[wrench zeroing] TF Failure: \r\n %s,\r\n %s" %(sys.exc_info()[0], le))
             return
         except tf.ExtrapolationException as ee:
-            rospy.loginfo("[wrench zeroing] TF Failure:\r\n %s,\r\n%s" %(sys.exc_info()[0], ee))
+        #    rospy.loginfo("[wrench zeroing] TF Failure:\r\n %s,\r\n%s" %(sys.exc_info()[0], ee))
             return
         except tf.Exception as tfe:
-#            rospy.loginfo("[wrench_zeroing]: TF failure:\r\n%s, \r\n%s" %(sys.exc_info()[0], tfe))
+           # rospy.loginfo("[wrench_zeroing]: TF failure:\r\n%s, \r\n%s" %(sys.exc_info()[0], tfe))
             return
         except:
             rospy.loginfo("[wrench_zeroing]: Unknown TF failure:\r\n%s" %sys.exc_info()[0])
@@ -272,10 +270,13 @@ class WrenchZeroer(object):
             self.wrench_zero = (cur_wrench - (force_grav + torque_grav))
             self.got_zero = True
 
-        tf_zeroed_wrench = self.transform_wrench(zeroed_wrench)
-        if tf_zeroed_wrench is None:
-            rospy.loginfo("Second TF Fail")
-            return
+        if self.wrench_frame == self.wrench_location_frame:
+            tf_zeroed_wrench = self.transform_wrench(zeroed_wrench)
+            if tf_zeroed_wrench is None:
+                rospy.loginfo("Second TF Fail")
+                return
+        else:
+            tf_zeroed_wrench = zeroed_wrench
         zero_msg = WrenchStamped(header,
                                  Wrench(Vector3(*tf_zeroed_wrench[:3,0]),
                                         Vector3(*tf_zeroed_wrench[3:,0])))
@@ -285,11 +286,14 @@ class WrenchZeroer(object):
     def transform_wrench(self, wrench):
         try:
             ft_pos, ft_quat = self.tf_list.lookupTransform(self.gravity_frame,
-                                                           self.wrench_frame, rospy.Time(0))
+                                                           self.wrench_frame,
+                                                           rospy.Time(0))
             loc_pos, loc_quat = self.tf_list.lookupTransform(self.gravity_frame,
-                                                             self.wrench_location_frame, rospy.Time(0))
+                                                             self.wrench_location_frame,
+                                                             rospy.Time(0))
             base_pos, base_quat = self.tf_list.lookupTransform(self.wrench_base_frame,
-                                                               self.wrench_frame, rospy.Time(0))
+                                                               self.wrench_frame,
+                                                               rospy.Time(0))
         except:
             return None
         pos_diff = np.array(ft_pos) - np.array(loc_pos)
@@ -306,7 +310,8 @@ class WrenchZeroer(object):
     def visualize_wrench(self, wrench):
         try:
             loc_pos, loc_quat = self.tf_list.lookupTransform(self.wrench_base_frame,
-                                                             self.wrench_location_frame, rospy.Time(0))
+                                                             self.wrench_location_frame,
+                                                             rospy.Time(0))
         except:
             return
         self.publish_vector(self.wrench_base_frame, np.array(loc_pos), 0.05 * wrench[:3,0].A.T[0], 0)
