@@ -1,10 +1,10 @@
 <launch>
     <node pkg="pixel_2_3d" type="pixel_2_3d" name="pixel_2_3d" output="screen" respawn="true">
-        <remap from="image" to="/head_mount_kinect/rgb/image_color"/>
-        <remap from="point_cloud" to="/head_mount_kinect/rgb/points"/>
+        <remap from="info_topic" to="/head_mount_kinect/rgb_lowres/camera_info"/>
+        <remap from="point_cloud" to="/head_mount_kinect/depth_registered/points"/>
         <remap from="l_mouse_click" to="/clickable_display/l_mouse_click"/>
         <param name="normal_radius" type="double" value="0.035" />
         <param name="output_frame" value="/base_link"/>
-        <param name="use_closest_pixel" value="True"/>
+        <param name="use_closest_pixel" value="False"/>
     </node>
 </launch>

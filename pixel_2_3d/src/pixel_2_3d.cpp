@@ -29,11 +29,11 @@ namespace pixel_2_3d {
         public:
             ros::NodeHandle nh;
             tf::TransformListener tf_listener;
-            ros::Subscriber pc_sub, l_click_sub;
+            ros::Subscriber pc_sub, l_click_sub, camera_info_sub;
             ros::Publisher pt3d_pub;
             ros::ServiceServer pix_srv;
-            image_transport::ImageTransport img_trans;
-            image_transport::CameraSubscriber camera_sub;
+//            image_transport::ImageTransport img_trans;
+//            image_transport::CameraSubscriber camera_sub;
             pcl::PointCloud<pcl::PointXYZRGB>::Ptr cur_pc;
             double normal_search_radius;
             std::string output_frame;
@@ -42,17 +42,19 @@ namespace pixel_2_3d {
 
             Pixel23dServer();
             void onInit();
-            void cameraCallback(const sensor_msgs::ImageConstPtr& img_msg,
-                                const sensor_msgs::CameraInfoConstPtr& info_msg);
+            void cameraInfoCallback(const sensor_msgs::CameraInfoConstPtr& info_msg);
+//            void cameraCallback(const sensor_msgs::ImageConstPtr& img_msg,
+//                                const sensor_msgs::CameraInfoConstPtr& info_msg);
             void pcCallback(sensor_msgs::PointCloud2::ConstPtr pc_msg);
             bool pixCallback(Pixel23d::Request& req, Pixel23d::Response& resp);
             void lClickCallback(const geometry_msgs::PointStamped& click_msg);
 
     };
 
-    Pixel23dServer::Pixel23dServer() : nh("~"), img_trans(nh),
+    Pixel23dServer::Pixel23dServer() : nh("~"), 
                                        cur_pc(new pcl::PointCloud<pcl::PointXYZRGB>),
-                                       cam_called(false), pc_called(false) {
+                                       cam_called(false),
+                                       pc_called(false) {
         onInit();
     }
 
@@ -60,9 +62,10 @@ namespace pixel_2_3d {
         nh.param<double>("normal_radius", normal_search_radius, 0.03);
         nh.param<bool>("use_closest_pixel", use_closest_pixel, false);
         nh.param<std::string>("output_frame", output_frame, "");
-        camera_sub = img_trans.subscribeCamera<Pixel23dServer>
-                                              ("/image", 1, 
-                                               &Pixel23dServer::cameraCallback, this);
+       // camera_sub = img_trans.subscribeCamera<Pixel23dServer>
+       //                                       ("/image", 1, 
+       //                                        &Pixel23dServer::cameraCallback, this);
+        camera_info_sub = nh.subscribe("/info_topic", 1, &Pixel23dServer::cameraInfoCallback, this);
         pc_sub = nh.subscribe("/point_cloud", 1, &Pixel23dServer::pcCallback, this);
         pix_srv = nh.advertiseService("/pixel_2_3d", &Pixel23dServer::pixCallback, this);
         pt3d_pub = nh.advertise<geometry_msgs::PoseStamped>("/pixel3d", 1);
@@ -70,20 +73,20 @@ namespace pixel_2_3d {
         ROS_INFO("[pixel_2_3d] Pixel23dServer loaded");
     }
 
-    void Pixel23dServer::cameraCallback(const sensor_msgs::ImageConstPtr& img_msg,
-                                         const sensor_msgs::CameraInfoConstPtr& info_msg) {
-        if(!info_msg)
-            return;
+//    void Pixel23dServer::cameraCallback(const sensor_msgs::ImageConstPtr& img_msg,
+//                                         const sensor_msgs::CameraInfoConstPtr& info_msg) {
+    void Pixel23dServer::cameraInfoCallback(const sensor_msgs::CameraInfoConstPtr& info_msg) {
         img_width = info_msg->width;
         img_height = info_msg->height;
         cam_called = true;
-        camera_sub.shutdown();
+        camera_info_sub.shutdown();
+        ROS_INFO("[pixel_2_3d] Camera Info Received");
     }
 
     void Pixel23dServer::pcCallback(sensor_msgs::PointCloud2::ConstPtr pc_msg) {
         pcl::fromROSMsg(*pc_msg, *cur_pc);
         pc_called = true;
-    }
+    } 
 
     bool Pixel23dServer::pixCallback(Pixel23d::Request& req, Pixel23d::Response& resp) {
         resp.pixel3d.pose.position.x = -10000.0;
@@ -190,22 +193,13 @@ namespace pixel_2_3d {
         double dot = nx*pt3d_trans.point.x + ny*pt3d_trans.point.y + nz*pt3d_trans.point.z;
         if(dot > 0) { nx = -nx; ny = -ny; nz = -nz; }
        
-        //Phil's update, now returns direction of pose (x-axis) along normal
+        // return direction of pose (x-axis) along normal
         btVector3 normal_vec(nx,ny,nz);
         btVector3 x_axis(1.0,0.0,0.0);
         btVector3 axis = x_axis.cross(normal_vec);
         double angle = x_axis.angle(normal_vec);
         btQuaternion quat(axis, angle);
         
-        //Kelsey's solution, returns Z-axis of quaternion along normal
-        //double j = std::sqrt(1/(1+ny*ny/(nz*nz)));
-        //double k = -ny*j/nz;
-        //btMatrix3x3 M (0,  ny*k - nz*j,  nx,      
-        //               j,  -nx*k,        ny,      
-        //               k,  nx*j,         nz);
-        //btQuaternion quat;
-        //M.getRotation(quat);
-
         geometry_msgs::PoseStamped pt3d_pose;
         pt3d_pose.header.frame_id = cur_pc->header.frame_id;
         pt3d_pose.header.stamp = ros::Time(0);
