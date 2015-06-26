@@ -5,7 +5,7 @@ import argparse
 import roslib; roslib.load_manifest('hrl_ft')
 import rospy
 
-from geometry_msgs.msg import WrenchStamped, PoseStamped, Point, PointStamped
+from geometry_msgs.msg import WrenchStamped, Point, PointStamped
 from visualization_msgs.msg import  Marker
 
 class WrenchToMarker(object):
@@ -45,7 +45,7 @@ class WrenchToMarker(object):
         force_vec.points.append(force_point)
         return force_vec
 
-if __name__=='__main__':
+def main():
     parser = argparse.ArgumentParser(description="Apply a transform")
     parser.add_argument('-s','--scale', default=0.1, type=float,
                         help='The scaling applied to the vector magnitude.'+

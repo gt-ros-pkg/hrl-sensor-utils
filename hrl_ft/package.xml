@@ -1,0 +1,39 @@
+<package>
+  <name>hrl_ft</name>
+  <version>0.0.0</version>
+  <description>hrl_ft contains wrench_zeroing.py, a utility for determining and saving the mass
+      and center of mass of an object connected to a force/torque sensor as well as cancelling
+      out the force/torque due to gravity on the object.</description>
+  <maintainer email="phillip.grice@gatech.edu">Phillip Grice</maintainer>
+
+  <license>BSD</license>
+
+  <url type="website">http://ros.org/wiki/hrl_ft</url>
+  <!-- <url type="bugtracker"></url> -->
+
+  <author email="kphawkins@gatech.edu">Kelsey Hawkins</author>
+  <author email="phillip.grice@gatech.edu">Phillip Grice</author>
+  <author>Advisor: Prof. Charlie Kemp (Healthcare Robotics Lab at Georgia Tech)</author>
+
+  <!-- Dependencies which this package needs to build itself. -->
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <!-- Dependencies needed to compile this package. -->
+  <build_depend>rospy</build_depend>
+  <build_depend>tf</build_depend>
+  <build_depend>rosparam</build_depend>
+  <build_depend>visualization_msgs</build_depend>
+
+  <!-- Dependencies needed after this package is compiled. -->
+  <run_depend>rospy</run_depend>
+  <run_depend>tf</run_depend>
+  <run_depend>rosparam</run_depend>
+  <run_depend>visualization_msgs</run_depend>
+
+  <!-- Dependencies needed only for running tests. -->
+  <!-- <test_depend>rospy</test_depend> -->
+  <!-- <test_depend>tf</test_depend> -->
+  <!-- <test_depend>rosparam</test_depend> -->
+  <!-- <test_depend>visualization_msgs</test_depend> -->
+
+</package>

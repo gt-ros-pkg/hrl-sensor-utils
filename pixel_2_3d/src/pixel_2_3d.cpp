@@ -1,6 +1,5 @@
-//#include <numeric>
 #include <ros/ros.h>
-#include <algorithm>
+//#include <algorithm>
 
 #include <geometry_msgs/PointStamped.h>
 #include <geometry_msgs/PoseStamped.h>
@@ -10,12 +9,11 @@
 #include <pcl/kdtree/kdtree_flann.h>
 #include <pcl/filters/passthrough.h>
 #include <pcl/surface/mls.h>
+#include <pcl/surface/impl/mls.hpp>
 #include <pcl/filters/conditional_removal.h>
 #include <tf/transform_listener.h>
-#include <opencv/cv.h>
-#include <image_transport/image_transport.h>
 #include <image_geometry/pinhole_camera_model.h>
-#include <pcl_ros/transforms.h>
+//#include <pcl_ros/transforms.h>
 
 #include <pixel_2_3d/Pixel23d.h>
 
@@ -32,8 +30,6 @@ namespace pixel_2_3d {
             ros::Subscriber pc_sub, l_click_sub, camera_info_sub;
             ros::Publisher pt3d_pub;
             ros::ServiceServer pix_srv;
-//            image_transport::ImageTransport img_trans;
-//            image_transport::CameraSubscriber camera_sub;
             pcl::PointCloud<pcl::PointXYZRGB>::Ptr cur_pc;
             double normal_search_radius;
             std::string output_frame;
@@ -43,8 +39,6 @@ namespace pixel_2_3d {
             Pixel23dServer();
             void onInit();
             void cameraInfoCallback(const sensor_msgs::CameraInfoConstPtr& info_msg);
-//            void cameraCallback(const sensor_msgs::ImageConstPtr& img_msg,
-//                                const sensor_msgs::CameraInfoConstPtr& info_msg);
             void pcCallback(sensor_msgs::PointCloud2::ConstPtr pc_msg);
             bool pixCallback(Pixel23d::Request& req, Pixel23d::Response& resp);
             void lClickCallback(const geometry_msgs::PointStamped& click_msg);
@@ -62,9 +56,6 @@ namespace pixel_2_3d {
         nh.param<double>("normal_radius", normal_search_radius, 0.03);
         nh.param<bool>("use_closest_pixel", use_closest_pixel, false);
         nh.param<std::string>("output_frame", output_frame, "");
-       // camera_sub = img_trans.subscribeCamera<Pixel23dServer>
-       //                                       ("/image", 1, 
-       //                                        &Pixel23dServer::cameraCallback, this);
         camera_info_sub = nh.subscribe("/info_topic", 1, &Pixel23dServer::cameraInfoCallback, this);
         pc_sub = nh.subscribe("/point_cloud", 1, &Pixel23dServer::pcCallback, this);
         pix_srv = nh.advertiseService("/pixel_2_3d", &Pixel23dServer::pixCallback, this);
@@ -73,8 +64,6 @@ namespace pixel_2_3d {
         ROS_INFO("[pixel_2_3d] Pixel23dServer loaded");
     }
 
-//    void Pixel23dServer::cameraCallback(const sensor_msgs::ImageConstPtr& img_msg,
-//                                         const sensor_msgs::CameraInfoConstPtr& info_msg) {
     void Pixel23dServer::cameraInfoCallback(const sensor_msgs::CameraInfoConstPtr& info_msg) {
         img_width = info_msg->width;
         img_height = info_msg->height;
@@ -174,31 +163,37 @@ namespace pixel_2_3d {
         }
 
         // Compute normals
-        pcl::PointCloud<pcl::Normal>::Ptr normals_ptr(new pcl::PointCloud<pcl::Normal>());
+//        pcl::PointCloud<pcl::Normal>::Ptr normals_ptr(new pcl::PointCloud<pcl::Normal>());
         pcl::search::KdTree<PRGB>::Ptr normals_tree (new pcl::search::KdTree<PRGB> ());
-        pcl::PointCloud<PRGB> mls_points;
-        pcl::MovingLeastSquares<PRGB, pcl::Normal> mls;
+        //pcl::PointCloud<pcl::Normal> mls_points;
+        //pcl::MovingLeastSquares<PRGB, pcl::Normal> mls;
+        pcl::PointCloud<pcl::PointXYZRGBNormal> mls_points;
+        pcl::MovingLeastSquares<PRGB, pcl::PointXYZRGBNormal> mls;
         normals_tree->setInputCloud(near_pts);
-        mls.setOutputNormals(normals_ptr);
+//        mls.setOutputNormals(normals_ptr);
+        mls.setComputeNormals(true);
         mls.setInputCloud(near_pts);
-        mls.setPolynomialFit(true);
+        mls.setPolynomialFit(false);
         mls.setSearchMethod(normals_tree);
         mls.setSearchRadius(normal_search_radius);
-        mls.reconstruct(mls_points);
+//        mls.reconstruct(mls_points);
+        mls.process(mls_points);
 
         // convert normal to quaternion
-        double nx = normals_ptr->points[closest_ind].normal[0];
-        double ny = normals_ptr->points[closest_ind].normal[1];
-        double nz = normals_ptr->points[closest_ind].normal[2];
+        double nx = mls_points.points[closest_ind].normal[0];
+        double ny = mls_points.points[closest_ind].normal[1];
+        double nz = mls_points.points[closest_ind].normal[2];
         double dot = nx*pt3d_trans.point.x + ny*pt3d_trans.point.y + nz*pt3d_trans.point.z;
         if(dot > 0) { nx = -nx; ny = -ny; nz = -nz; }
        
         // return direction of pose (x-axis) along normal
-        btVector3 normal_vec(nx,ny,nz);
-        btVector3 x_axis(1.0,0.0,0.0);
-        btVector3 axis = x_axis.cross(normal_vec);
+        tf::Vector3 normal_vec(nx, ny, nz);
+        tf::Vector3 x_axis(1.0, 0.0, 0.0);
+        tf::Vector3 axis = x_axis.cross(normal_vec);
+        //(1,0,0)x(nx,ny,nz) = (0, -nz, ny)
         double angle = x_axis.angle(normal_vec);
-        btQuaternion quat(axis, angle);
+        tf::Quaternion quat;
+        quat.setRotation(axis, angle);
         
         geometry_msgs::PoseStamped pt3d_pose;
         pt3d_pose.header.frame_id = cur_pc->header.frame_id;

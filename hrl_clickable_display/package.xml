@@ -1,0 +1,51 @@
+<package>
+  <name>hrl_clickable_display</name>
+  <version>0.0.0</version>
+  <description>Provides a simple opencv display which publishes left and right mouse clicks along with the pixel location of the click.</description>
+  <maintainer email="phillip.grice@gatech.edu">Phillip Grice</maintainer>
+
+  <license>BSD</license>
+
+  <url type="website">http://ros.org/wiki/hrl_clickable_display</url>
+  <!-- <url type="bugtracker"></url> -->
+
+  <author email="kphawkins@gatech.edu">Kelsey Hawkins</author>
+  <author>Advisor: Prof. Charlie Kemp (Healthcare Robotics Lab at Georgia Tech)</author>
+
+  <!-- Dependencies which this package needs to build itself. -->
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <!-- Dependencies needed to compile this package. -->
+  <build_depend>roscpp</build_depend>
+  <build_depend>message_generation</build_depend>
+  <build_depend>geometry_msgs</build_depend>
+  <build_depend>cv_bridge</build_depend>
+  <build_depend>image_transport</build_depend>
+  <build_depend>tf</build_depend>
+  <build_depend>image_geometry</build_depend>
+  <build_depend>std_srvs</build_depend>
+  <build_depend>visualization_msgs</build_depend>
+
+  <!-- Dependencies needed after this package is compiled. -->
+  <run_depend>roscpp</run_depend>
+  <run_depend>message_runtime</run_depend>
+  <run_depend>geometry_msgs</run_depend>
+  <run_depend>cv_bridge</run_depend>
+  <run_depend>image_transport</run_depend>
+  <run_depend>tf</run_depend>
+  <run_depend>image_geometry</run_depend>
+  <run_depend>std_srvs</run_depend>
+  <run_depend>visualization_msgs</run_depend>
+
+  <!-- Dependencies needed only for running tests. -->
+  <!-- <test_depend>roscpp</test_depend> -->
+  <!-- <test_depend>geometry_msgs</test_depend> -->
+  <!-- <test_depend>cv_bridge</test_depend> -->
+  <!-- <test_depend>image_transport</test_depend> -->
+  <!-- <test_depend>opencv2</test_depend> -->
+  <!-- <test_depend>tf</test_depend> -->
+  <!-- <test_depend>image_geometry</test_depend> -->
+  <!-- <test_depend>std_srvs</test_depend> -->
+  <!-- <test_depend>visualization_msgs</test_depend> -->
+
+</package>

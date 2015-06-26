@@ -1,0 +1,42 @@
+<package>
+  <name>pixel_2_3d</name>
+  <version>0.0.0</version>
+  <description>
+     Simple utility used to convert pixels on an image to 3d points with surface normal using point cloud data.
+  </description>
+  <url type="website">http://ros.org/wiki/pixel_2_3d</url>
+
+  <maintainer email="phillip.grice@gatech.edu">Phillip Grice</maintainer>
+
+  <license>BSD</license>
+
+  <author email="kphawkins@gatech.edu">Kelsey Hawkins</author>
+  <author email="phillip.grice@gatech.edu">Phillip Grice</author>
+  <author>Advisor: Prof. Charlie Kemp (Healthcare Robotics Lab at Georgia Tech)</author>
+
+  <!-- Dependencies which this package needs to build itself. -->
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <!-- Dependencies needed to compile this package. -->
+  <build_depend>roscpp</build_depend>
+  <build_depend>message_generation</build_depend>
+  <build_depend>geometry_msgs</build_depend>
+  <build_depend>tf</build_depend>
+  <build_depend>pcl</build_depend>
+  <build_depend>pcl_ros</build_depend>
+  <build_depend>image_transport</build_depend>
+  <build_depend>image_geometry</build_depend>
+
+  <!-- Dependencies needed after this package is compiled. -->
+  <run_depend>roscpp</run_depend>
+  <run_depend>message_runtime</run_depend>
+  <run_depend>geometry_msgs</run_depend>
+  <run_depend>tf</run_depend>
+  <run_depend>pcl</run_depend>
+  <run_depend>pcl_ros</run_depend>
+  <run_depend>image_transport</run_depend>
+  <run_depend>image_geometry</run_depend>
+
+</package>
+
+

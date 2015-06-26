@@ -13,7 +13,6 @@
 #include <std_srvs/Empty.h>
 #include <std_msgs/Bool.h>
 #include <std_msgs/Int32.h>
-#include <cv_bridge/cv_bridge.h>
 #include <opencv/cv.h>
 #include <sensor_msgs/image_encodings.h>
 #include <image_geometry/pinhole_camera_model.h>

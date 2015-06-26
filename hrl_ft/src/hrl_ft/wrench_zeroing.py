@@ -1,6 +1,5 @@
 #! /usr/bin/python
 
-import cPickle as pickle
 import sys
 import copy
 import numpy as np
@@ -12,11 +11,13 @@ import rospy
 import rosparam
 import tf
 import tf.transformations as tf_trans
-from geometry_msgs.msg import WrenchStamped, Wrench, Vector3, Point, Quaternion, Pose, PoseArray
-from std_msgs.msg import Float64, Bool, ColorRGBA
+from geometry_msgs.msg import (WrenchStamped, Wrench, Vector3,
+                               Point, Quaternion, Pose, PoseArray)
+from std_msgs.msg import Bool, ColorRGBA
 from visualization_msgs.msg import Marker
 
 g = 9.80665
+
 
 class WrenchListener(object):
     def __init__(self, wrench_topic):
@@ -30,6 +31,7 @@ class WrenchListener(object):
                            msg.wrench.torque.x,
                            msg.wrench.torque.y,
                            msg.wrench.torque.z]
+
 
 def collect_data_pr2(n_4, n_5, n_6):
     roslib.load_manifest("hrl_pr2_arms")
@@ -50,7 +52,9 @@ def collect_data_pr2(n_4, n_5, n_6):
     rospy.sleep(8.)
 
     data = []
-    pose_array_pub = rospy.Publisher('wrench_train_poses', PoseArray, latch=True)
+    pose_array_pub = rospy.Publisher('wrench_train_poses',
+                                     PoseArray,
+                                     latch=True)
 
     q_cur = q_setup
     for q_4 in q_4_vals:
@@ -61,10 +65,12 @@ def collect_data_pr2(n_4, n_5, n_6):
                 q_cur[6] = q_6
                 jnt_arm.set_ep(q_cur, 2.)
                 rospy.sleep(4.)
-                (trans, rot) = tf_list.lookupTransform(gravity_frame, wrench_frame, rospy.Time(0))
+                (trans, rot) = tf_list.lookupTransform(gravity_frame,
+                                                       wrench_frame,
+                                                       rospy.Time(0))
                 datum = (copy.copy(wrench_list.cur_wrench), rot)
                 data.append(datum)
-                print  "Wrench: %s\r\nOrient: %s" %(datum[0], datum[1])
+                print "Wrench: %s\r\nOrient: %s" % (datum[0], datum[1])
                 if rospy.is_shutdown():
                     return
     poses = []
@@ -394,6 +400,3 @@ def main():
             param_vector = process_data(data, is_backwards=opts.is_backwards)
             save_params(param_vector, opts.filename)
             return
-
-if __name__ == "__main__":
-    main()
