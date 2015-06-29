@@ -61,13 +61,14 @@ namespace hrl_clickable_display {
         nh.param<double>("head_length", C, 0.03);
         nh.param<bool>("debug_mode", debug, false);
         nh.param<bool>("auto_clear", auto_clear, false);
-        ARROW_POINTS[0][0] = 0;    ARROW_POINTS[0][1] = 0;    ARROW_POINTS[0][2] = 0;
-        ARROW_POINTS[1][0] = 0;    ARROW_POINTS[1][1] = 0;    ARROW_POINTS[1][2] = A;
-        ARROW_POINTS[2][0] = -B/2; ARROW_POINTS[2][1] = -B/2; ARROW_POINTS[2][2] = A;
-        ARROW_POINTS[3][0] =  B/2; ARROW_POINTS[3][1] = -B/2; ARROW_POINTS[3][2] = A;
-        ARROW_POINTS[4][0] =  B/2; ARROW_POINTS[4][1] =  B/2; ARROW_POINTS[4][2] = A;
-        ARROW_POINTS[5][0] = -B/2; ARROW_POINTS[5][1] =  B/2; ARROW_POINTS[5][2] = A;
-        ARROW_POINTS[6][0] = 0;    ARROW_POINTS[6][1] = 0;    ARROW_POINTS[6][2] = A+C;
+        // Arrow along x-axis
+        ARROW_POINTS[0][2] = 0;    ARROW_POINTS[0][1] = 0;    ARROW_POINTS[0][0] = 0;
+        ARROW_POINTS[1][2] = 0;    ARROW_POINTS[1][1] = 0;    ARROW_POINTS[1][0] = A;
+        ARROW_POINTS[2][2] = -B/2; ARROW_POINTS[2][1] = -B/2; ARROW_POINTS[2][0] = A;
+        ARROW_POINTS[3][2] =  B/2; ARROW_POINTS[3][1] = -B/2; ARROW_POINTS[3][0] = A;
+        ARROW_POINTS[4][2] =  B/2; ARROW_POINTS[4][1] =  B/2; ARROW_POINTS[4][0] = A;
+        ARROW_POINTS[5][2] = -B/2; ARROW_POINTS[5][1] =  B/2; ARROW_POINTS[5][0] = A;
+        ARROW_POINTS[6][2] = 0;    ARROW_POINTS[6][1] = 0;    ARROW_POINTS[6][0] = A+C;
 
         camera_sub = img_trans.subscribeCamera<ArrowOverlay>
                                               ("/image_in", 1, 
@@ -98,11 +99,14 @@ namespace hrl_clickable_display {
             std::vector<cv::Point> cv_pts;
             for(int j=0;j<7;j++) {
                 //geometry_msgs::PointStamped arr_pt;
-                btVector4 arr_pt;
-                arr_pt.setX(ARROW_POINTS[j][0]);
-                arr_pt.setY(ARROW_POINTS[j][1]);
-                arr_pt.setZ(ARROW_POINTS[j][2]);
-                arr_pt.setW(1);
+                tf::Vector3 arr_pt(ARROW_POINTS[j][0],
+                                   ARROW_POINTS[j][1],
+                                   ARROW_POINTS[j][2]);
+                //btVector4 arr_pt;
+                //arr_pt.setX(ARROW_POINTS[j][0]);
+                //arr_pt.setY(ARROW_POINTS[j][1]);
+                //arr_pt.setZ(ARROW_POINTS[j][2]);
+                //arr_pt.setW(1);
                 tf::Vector3 arr_pt_rot = arrow_pose * arr_pt;
                 cv::Point3d proj_pt_cv(arr_pt_rot.getX(), arr_pt_rot.getY(), arr_pt_rot.getZ());
                 cv::Point pt2d = cam_model.project3dToPixel(proj_pt_cv);

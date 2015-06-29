@@ -1,5 +1,4 @@
 #include <ros/ros.h>
-//#include <algorithm>
 
 #include <geometry_msgs/PointStamped.h>
 #include <geometry_msgs/PoseStamped.h>
@@ -13,7 +12,6 @@
 #include <pcl/filters/conditional_removal.h>
 #include <tf/transform_listener.h>
 #include <image_geometry/pinhole_camera_model.h>
-//#include <pcl_ros/transforms.h>
 
 #include <pixel_2_3d/Pixel23d.h>
 
@@ -83,12 +81,12 @@ namespace pixel_2_3d {
         resp.pixel3d.pose.position.z = -10000.0;
 
         if(!cam_called) {
-            ROS_WARN("No camera_info message received.");
+            ROS_WARN("[pixel_2_3d] No camera_info message received.");
             resp.error_flag = resp.NO_CAMERA_INFO;
             return true;
         }
         if(!pc_called) {
-            ROS_WARN("No point cloud message received.");
+            ROS_WARN("[pixel_2_3d] No point cloud message received.");
             resp.error_flag = resp.NO_POINT_CLOUD;
             return true;
         }
@@ -96,7 +94,7 @@ namespace pixel_2_3d {
         int64_t pc_ind = req.pixel_u + req.pixel_v * img_width;
         if(req.pixel_u < 0 || req.pixel_v < 0 || 
            req.pixel_u >= (int32_t) img_width || req.pixel_v >= (int32_t) img_height) {
-            ROS_WARN("Pixel requested is outside image size.");
+            ROS_WARN("[pixel_2_3d] Pixel requested is outside image size.");
             resp.error_flag = resp.OUTSIDE_IMAGE;
             return true;
         }
@@ -117,7 +115,7 @@ namespace pixel_2_3d {
                 }
                 pc_ind = std::min_element(dists.begin(), dists.end()) - dists.begin();
             } else {
-                ROS_WARN("Point cloud not defined for this region.");
+                ROS_WARN("[pixel_2_3d] Point cloud not defined for this region.");
                 resp.error_flag = resp.OUTSIDE_POINT_CLOUD;
                 return true;
             }
