@@ -5,25 +5,20 @@ project(hrl_ft)
 # Load catkin and all dependencies required for this package
 find_package(catkin REQUIRED COMPONENTS rospy tf rosparam visualization_msgs)
 
-
-#set the default path for built executables to the "bin" directory
-set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
-#set the default path for built libraries to the "lib" directory
-set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
-
 catkin_python_setup()
 
-# catkin_package parameters: http://ros.org/doc/groovy/api/catkin/html/dev_guide/generated_cmake_api.html#catkin-package
-# TODO: fill in what other packages will need to use this package
 catkin_package(
-    DEPENDS rospy tf rosparam visualization_msgs
-    CATKIN_DEPENDS 
+    DEPENDS 
+    CATKIN_DEPENDS rospy tf rosparam visualization_msgs
     INCLUDE_DIRS 
     LIBRARIES 
 )
 
-install(PROGRAMS 
-    scripts/wrench_zeroing
-    scripts/wrench_to_viz_marker 
-        DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
+MESSAGE(INSTALLING PYTHON TO: ${CATKIN_PACKAGE_BIN_DESTINATION})
+
+catkin_install_python(PROGRAMS scripts/wrench_zeroing scripts/wrench_to_viz_marker 
+                        DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
+
+install(PROGRAMS scripts/wrench_zeroing scripts/wrench_to_viz_marker 
+                        DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
 
