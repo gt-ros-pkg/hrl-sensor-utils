@@ -14,8 +14,6 @@ catkin_package(
     LIBRARIES 
 )
 
-MESSAGE(INSTALLING PYTHON TO: ${CATKIN_PACKAGE_BIN_DESTINATION})
-
 catkin_install_python(PROGRAMS scripts/wrench_zeroing scripts/wrench_to_viz_marker 
                         DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
 
