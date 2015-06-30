@@ -1,4 +1,4 @@
 <launch>
     <arg name="tool" />
-    <node pkg="hrl_ft" name="tool_netft_zeroer" type="wrench_zeroing.py" args="-l -r -z -f $(find hrl_ft)/params/ft_zero_params_$(arg tool).yaml" output="screen" />
+    <node pkg="hrl_ft" name="tool_netft_zeroer" type="wrench_zeroing" args="-l -r -z -f $(find hrl_ft)/params/ft_zero_params_$(arg tool).yaml" output="screen" />
 </launch>
