@@ -26,3 +26,5 @@ target_link_libraries(pixel_2_3d ${catkin_LIBRARIES} ${PCL_LIBRARIES})
 install(TARGETS pixel_2_3d
         RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
 
+install(DIRECTORY launch/
+        DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION})

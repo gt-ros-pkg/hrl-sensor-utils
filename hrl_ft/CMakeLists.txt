@@ -22,3 +22,8 @@ catkin_install_python(PROGRAMS scripts/wrench_zeroing scripts/wrench_to_viz_mark
 install(PROGRAMS scripts/wrench_zeroing scripts/wrench_to_viz_marker 
                         DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
 
+install(DIRECTORY launch/
+        DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/launch)
+
+install(FILES params/ft_zero_params_gripper.yaml
+        DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/params)
