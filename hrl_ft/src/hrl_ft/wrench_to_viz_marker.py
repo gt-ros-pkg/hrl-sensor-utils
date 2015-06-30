@@ -2,7 +2,6 @@
 
 import argparse
 
-import roslib; roslib.load_manifest('hrl_ft')
 import rospy
 
 from geometry_msgs.msg import WrenchStamped, Point, PointStamped

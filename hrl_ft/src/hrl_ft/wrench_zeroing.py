@@ -5,8 +5,6 @@ import copy
 import numpy as np
 from threading import Lock
 
-import roslib
-roslib.load_manifest("hrl_ft")
 import rospy
 import rosparam
 import tf

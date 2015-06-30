@@ -24,7 +24,7 @@ catkin_package(
     LIBRARIES 
 )
 
-include_directories(include ${catkin_INCLUDE_DIRS} ${OpenCV_INCLUDE_DIRS})
+include_directories(${catkin_INCLUDE_DIRS} ${OpenCV_INCLUDE_DIRS})
 
 add_executable(clickable_display src/clickable_display.cpp)
 add_executable(arrow_overlay src/arrow_overlay.cpp)

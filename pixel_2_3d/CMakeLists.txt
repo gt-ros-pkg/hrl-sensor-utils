@@ -17,7 +17,7 @@ catkin_package(
     LIBRARIES 
 )
 
-include_directories(include ${catkin_INCLUDE_DIRS} ${PCL_INCLUDE_DIRS})
+include_directories(${catkin_INCLUDE_DIRS} ${PCL_INCLUDE_DIRS})
 
 add_executable(pixel_2_3d src/pixel_2_3d.cpp)
 
