@@ -29,6 +29,9 @@ include_directories(${catkin_INCLUDE_DIRS} ${OpenCV_INCLUDE_DIRS})
 add_executable(clickable_display src/clickable_display.cpp)
 add_executable(arrow_overlay src/arrow_overlay.cpp)
 
+add_dependencies(clickable_display ${PACKAGE_NAME}_generate_messages_cpp)
+add_dependencies(arrow_overlay ${PACKAGE_NAME}_generate_messages_cpp)
+
 target_link_libraries(clickable_display ${OpenCV_LIBRARIES} ${catkin_LIBRARIES})
 target_link_libraries(arrow_overlay ${OpenCV_LIBRARIES} ${catkin_LIBRARIES})
 

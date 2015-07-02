@@ -21,6 +21,8 @@ include_directories(${catkin_INCLUDE_DIRS} ${PCL_INCLUDE_DIRS})
 
 add_executable(pixel_2_3d src/pixel_2_3d.cpp)
 
+add_dependencies(pixel_2_3d ${PROJECT_NAME}_generate_messages_cpp)
+
 target_link_libraries(pixel_2_3d ${catkin_LIBRARIES} ${PCL_LIBRARIES})
 
 install(TARGETS pixel_2_3d
