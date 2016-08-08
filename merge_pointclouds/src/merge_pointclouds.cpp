@@ -16,6 +16,7 @@
 #include <pcl/registration/transforms.h>
 
 #include <ros/ros.h>
+#include <std_srvs/Trigger.h>
 #include <tf/transform_listener.h>
 #include <pcl_ros/point_cloud.h>
 #include <pcl_ros/transforms.h>
@@ -24,12 +25,13 @@
 
 class MergePointClouds
 {
-    pcl::PointCloud<pcl::PointXYZ>::Ptr incoming_pc, transformed_pc, merged_pc;
-    tf::TransformListener *tf_listener;
+    std::string merge_frame;
     float min_sample_distance_, max_correspondence_distance_;
     int nr_iterations_;
+    ros::ServiceServer triggerMergeService;
+    pcl::PointCloud<pcl::PointXYZ>::Ptr incoming_pc, transformed_pc, merged_pc;
+    tf::TransformListener *tf_listener;
     pcl::SampleConsensusInitialAlignment<pcl::PointXYZ, pcl::PointXYZ, pcl::FPFHSignature33> sac_ia_;
-    std::string base_frame;
 
     public:
         ros::NodeHandle nh;
@@ -37,19 +39,21 @@ class MergePointClouds
         ros::Publisher pc_pub;
              
         MergePointClouds(): nh("~"),
+                            tf_listener(new tf::TransformListener),
                             incoming_pc(new pcl::PointCloud<pcl::PointXYZ>),
                             transformed_pc(new pcl::PointCloud<pcl::PointXYZ>),
                             merged_pc(new pcl::PointCloud<pcl::PointXYZ>),
                             min_sample_distance_(0.05f),
                             max_correspondence_distance_(0.01f*0.01f),
-                            nr_iterations_(500),
-                            base_frame("/base_link")
+                            nr_iterations_(500)
         {
             pc_sub = nh.subscribe("/head_mount_kinect/sd/points", 1, &MergePointClouds::pcCallback, this);
             pc_pub = nh.advertise< pcl::PointCloud<pcl::PointXYZ> > ("merged_points", 1);
             sac_ia_.setMinSampleDistance (min_sample_distance_);
             sac_ia_.setMaxCorrespondenceDistance (max_correspondence_distance_);
             sac_ia_.setMaximumIterations (nr_iterations_);
+            nh.param<std::string>("merge_frame", merge_frame, "/base_footprint");
+            triggerMergeService  = nh.advertiseService("trigger_scan", &MergePointClouds::triggerScanCallback, this);
         };
         ~MergePointClouds(){};
 
@@ -67,8 +71,12 @@ class MergePointClouds
             ROS_INFO("Converted to PCL");
 
             ROS_INFO("Waiting for Transform");
-//            ROS_INFO("Frame: %s", (*pc_msg).header.frame_id);
-//            tf_listener->waitForTransform("/base_link", (*pc_msg).header.frame_id, (*pc_msg).header.stamp, ros::Duration(5.0));
+            try{
+                tf_listener->waitForTransform("/base_link", (*pc_msg).header.frame_id, ros::Time(0), ros::Duration(10.0));
+            } catch (tf::TransformException ex) {
+                ROS_ERROR("%s", ex.what());
+                return;
+            }
 
             ROS_INFO("Preparing to Transform Cloud");
             pcl_ros::transformPointCloud("/base_link", *incoming_pc, *transformed_pc, *tf_listener);
