@@ -1,22 +1,137 @@
-#include <ros/ros.h>
-#include <tf/transform_listener.h>
-
+#include <limits>
+#include <fstream>
+#include <vector>
+#include <Eigen/Core>
 #include <pcl/point_types.h>
 #include <pcl/point_cloud.h>
-#include <pcl/point_representation.h>
-
+#include <pcl/kdtree/kdtree_flann.h>
+#include <pcl/filters/passthrough.h>
 #include <pcl/filters/voxel_grid.h>
-#include <pcl/filters/filter.h>
-
 #include <pcl/features/normal_3d.h>
+#include <pcl/features/fpfh.h>
 
+#include <pcl/registration/ia_ransac.h>
 #include <pcl/registration/icp.h>
 #include <pcl/registration/icp_nl.h>
 #include <pcl/registration/transforms.h>
 
-#include <merge_pointclouds/merge_pointclouds.h>
+#include <ros/ros.h>
+#include <tf/transform_listener.h>
+#include <pcl_ros/point_cloud.h>
+#include <sensor_msgs/PointCloud2.h>
 
 
+class MergePointClouds
+{
+    public:
+        ros::NodeHandle nh;
+        ros::Subscriber pc_sub;
+        ros::Publisher pc_pub;
+             
+        MergePointClouds(): nh("~"),
+                            has_target_pc_(false),
+                            has_template_cloud_(false),
+                            cur_pc(new pcl::PointCloud<pcl::PointXYZ>),
+                            min_sample_distance_(0.05f),
+                            max_correspondence_distance_(0.01f*0.01f),
+                            nr_iterations_(500)
+        {
+            pc_sub = nh.subscribe("/head_mount_kinect/sd/points", 1, &MergePointClouds::pcCallback, this);
+            pc_pub = nh.advertise< pcl::PointCloud<pcl::PointXYZ> > ("mh_points", 1);
+            sac_ia_.setMinSampleDistance (min_sample_distance_);
+            sac_ia_.setMaxCorrespondenceDistance (max_correspondence_distance_);
+            sac_ia_.setMaximumIterations (nr_iterations_);
+        };
+        ~MergePointClouds(){};
+
+        void publishPointCloud(pcl::PointCloud<pcl::PointXYZ>::Ptr pc_out)
+        {
+//            pc_out->header.frame_id = "head_mount_kinect_rgb_optical_frame";
+            pc_pub.publish(pc_out);
+            ROS_INFO("Publishing PointCloud");
+        }
+
+        void pcCallback(sensor_msgs::PointCloud2::ConstPtr pc_msg)
+        {
+            ROS_INFO("Point Cloud Msg Received");
+            pcl::fromROSMsg(*pc_msg, *cur_pc); 
+            ROS_INFO("Converted to PCL");
+            pcl::PointCloud<pcl::PointXYZ>::Ptr points(new pcl::PointCloud<pcl::PointXYZ>());
+            std::vector<int> inds;
+            pcl::removeNaNFromPointCloud(*cur_pc, *points, inds);
+            ROS_INFO("NAN's Filtered.");
+//            filterTargetCloud(points);
+//            target_cloud_.setInputCloud(points);
+
+            has_target_pc_ = true;
+            ROS_INFO("Have Target Point Cloud");
+//            align(target_cloud_, template_cloud_);
+            publishPointCloud(points);
+        }
+
+/*        void filterTargetCloud(pcl::PointCloud<pcl::PointXYZ>::Ptr target_cloud)
+        {
+            //Preprocess cloud by removing distant points
+            pcl::PassThrough<pcl::PointXYZ> pass;
+            pass.setInputCloud(target_cloud);
+            pass.setFilterFieldName("z");
+            pass.setFilterLimits(0.3, 2.0);
+            pass.filter(*target_cloud);
+
+            //downsample pointcloud
+            pcl::VoxelGrid<pcl::PointXYZ> vox_grid;
+            vox_grid.setInputCloud(target_cloud);
+            vox_grid.setLeafSize(0.005f,0.005f, 0.005f);
+            pcl::PointCloud<pcl::PointXYZ>::Ptr tempCloud (new pcl::PointCloud<pcl::PointXYZ>);
+            vox_grid.filter(*tempCloud);
+            *target_cloud = *tempCloud;
+        }
+
+        void align(FeatureCloud target_cloud, FeatureCloud template_cloud)
+        {
+            sac_ia_.setInputTarget(target_cloud.getPointCloud());
+            sac_ia_.setTargetFeatures(target_cloud.getLocalFeatures());
+
+            sac_ia_.setInputCloud(template_cloud.getPointCloud());
+            sac_ia_.setSourceFeatures(template_cloud.getLocalFeatures());
+            pcl::PointCloud<pcl::PointXYZ> registration_output;
+            sac_ia_.align(registration_output);
+
+            float fitness_score = (float) sac_ia_.getFitnessScore(max_correspondence_distance_);
+            Eigen::Matrix4f final_transformation = sac_ia_.getFinalTransformation();
+            //EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
+            //Print the alignment fitness score (values < 0.00002 are good)
+            printf("Fitness Score: %f\n", fitness_score);
+
+            //Print rotation matrix and trans vector
+            Eigen::Matrix3f rotation = final_transformation.block<3,3>(0,0);
+            Eigen::Vector3f translation = final_transformation.block<3,1>(0,3);
+
+            printf("\n");
+            printf("    | %6.3f %6.3f %6.3f | \n", rotation(0,0), rotation(0,1), rotation(0,2));
+            printf("R = | %6.3f %6.3f %6.3f | \n", rotation(1,0), rotation(1,1), rotation(1,2));
+            printf("    | %6.3f %6.3f %6.3f | \n", rotation(2,0), rotation(2,1), rotation(2,2));
+            printf("\n");
+            printf("t = < %0.3f, %0.3f, %0.3f >\n", translation(0), translation(1), translation(2));
+
+            pcl::PointCloud<pcl::PointXYZ>::Ptr transformed_cloud(new pcl::PointCloud<pcl::PointXYZ>());
+            pcl::transformPointCloud(*template_cloud.getPointCloud(), *transformed_cloud, final_transformation);
+            publishPointCloud(transformed_cloud);
+        }
+*/
+    private:
+        pcl::PointCloud<pcl::PointXYZ>::Ptr incoming_pc_, merged_pc_, cur_pc;
+        tf::Transform tf_transform;
+        tf::TransformListener tf_listener;
+        bool has_target_pc_, has_template_cloud_;
+        float min_sample_distance_, max_correspondence_distance_;
+        int nr_iterations_;
+        pcl::SampleConsensusInitialAlignment<pcl::PointXYZ, pcl::PointXYZ, pcl::FPFHSignature33> sac_ia_;
+
+};
+
+/*
 using pcl::visualization::PointCloudColorHandlerGenericField;
 using pcl::visualization::PointCloudColorHandlerCustom;
 
@@ -49,29 +164,7 @@ struct PCDComparator
     }
 };
 
-
-// Define a new point representation for < x, y, z, curvature >
-class MyPointRepresentation : public pcl::PointRepresentation <PointNormalT>
-{
-    using pcl::PointRepresentation<PointNormalT>::nr_dimensions_;
-    public:
-    MyPointRepresentation ()
-    {
-        // Define the number of dimensions
-        nr_dimensions_ = 4;
-    }
-
-    // Override the copyToFloatArray method to define our feature vector
-    virtual void copyToFloatArray (const PointNormalT &p, float * out) const
-    {
-        // < x, y, z, curvature >
-        out[0] = p.x;
-        out[1] = p.y;
-        out[2] = p.z;
-        out[3] = p.curvature;
-    }
-};
-
+*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /** \brief Align a pair of PointCloud datasets and return the result
@@ -80,6 +173,8 @@ class MyPointRepresentation : public pcl::PointRepresentation <PointNormalT>
  * \param output the resultant aligned source PointCloud
  * \param final_transform the resultant transform between source and target
  */
+
+/*
 void pairAlign (const PointCloud::Ptr cloud_src, const PointCloud::Ptr cloud_tgt, PointCloud::Ptr output, Eigen::Matrix4f &final_transform, bool downsample = false)
 {
     //
@@ -199,16 +294,15 @@ void pairAlign (const PointCloud::Ptr cloud_src, const PointCloud::Ptr cloud_tgt
 
     final_transform = targetToSource;
 }
-
-
+*/
 int main (int argc, char** argv)
 {
 
     //Initialize ROS
     ros::init(argc, argv, "merge_pointclouds");
-    merge_node = new MergePointClouds();
+    MergePointClouds merge_node;
 
-
+/*
     PointCloud::Ptr result (new PointCloud), source, target;
     Eigen::Matrix4f GlobalTransform = Eigen::Matrix4f::Identity (), pairTransform;
 
@@ -235,5 +329,7 @@ int main (int argc, char** argv)
         ss << i << ".pcd";
         pcl::io::savePCDFile (ss.str (), *result, true);
 
-    }
-}l
+    }*/
+    ros::spin();
+    return 0;
+};
