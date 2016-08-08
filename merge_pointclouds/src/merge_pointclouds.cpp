@@ -18,26 +18,35 @@
 #include <ros/ros.h>
 #include <tf/transform_listener.h>
 #include <pcl_ros/point_cloud.h>
+#include <pcl_ros/transforms.h>
 #include <sensor_msgs/PointCloud2.h>
 
 
 class MergePointClouds
 {
+    pcl::PointCloud<pcl::PointXYZ>::Ptr incoming_pc, transformed_pc, merged_pc;
+    tf::TransformListener *tf_listener;
+    float min_sample_distance_, max_correspondence_distance_;
+    int nr_iterations_;
+    pcl::SampleConsensusInitialAlignment<pcl::PointXYZ, pcl::PointXYZ, pcl::FPFHSignature33> sac_ia_;
+    std::string base_frame;
+
     public:
         ros::NodeHandle nh;
         ros::Subscriber pc_sub;
         ros::Publisher pc_pub;
              
         MergePointClouds(): nh("~"),
-                            has_target_pc_(false),
-                            has_template_cloud_(false),
-                            cur_pc(new pcl::PointCloud<pcl::PointXYZ>),
+                            incoming_pc(new pcl::PointCloud<pcl::PointXYZ>),
+                            transformed_pc(new pcl::PointCloud<pcl::PointXYZ>),
+                            merged_pc(new pcl::PointCloud<pcl::PointXYZ>),
                             min_sample_distance_(0.05f),
                             max_correspondence_distance_(0.01f*0.01f),
-                            nr_iterations_(500)
+                            nr_iterations_(500),
+                            base_frame("/base_link")
         {
             pc_sub = nh.subscribe("/head_mount_kinect/sd/points", 1, &MergePointClouds::pcCallback, this);
-            pc_pub = nh.advertise< pcl::PointCloud<pcl::PointXYZ> > ("mh_points", 1);
+            pc_pub = nh.advertise< pcl::PointCloud<pcl::PointXYZ> > ("merged_points", 1);
             sac_ia_.setMinSampleDistance (min_sample_distance_);
             sac_ia_.setMaxCorrespondenceDistance (max_correspondence_distance_);
             sac_ia_.setMaximumIterations (nr_iterations_);
@@ -54,17 +63,21 @@ class MergePointClouds
         void pcCallback(sensor_msgs::PointCloud2::ConstPtr pc_msg)
         {
             ROS_INFO("Point Cloud Msg Received");
-            pcl::fromROSMsg(*pc_msg, *cur_pc); 
+            pcl::fromROSMsg(*pc_msg, *incoming_pc); 
             ROS_INFO("Converted to PCL");
+
+            ROS_INFO("Waiting for Transform");
+//            ROS_INFO("Frame: %s", (*pc_msg).header.frame_id);
+//            tf_listener->waitForTransform("/base_link", (*pc_msg).header.frame_id, (*pc_msg).header.stamp, ros::Duration(5.0));
+
+            ROS_INFO("Preparing to Transform Cloud");
+            pcl_ros::transformPointCloud("/base_link", *incoming_pc, *transformed_pc, *tf_listener);
+            ROS_INFO("Cloud Transformed");
             pcl::PointCloud<pcl::PointXYZ>::Ptr points(new pcl::PointCloud<pcl::PointXYZ>());
             std::vector<int> inds;
-            pcl::removeNaNFromPointCloud(*cur_pc, *points, inds);
+            pcl::removeNaNFromPointCloud(*transformed_pc, *points, inds);
             ROS_INFO("NAN's Filtered.");
 //            filterTargetCloud(points);
-//            target_cloud_.setInputCloud(points);
-
-            has_target_pc_ = true;
-            ROS_INFO("Have Target Point Cloud");
 //            align(target_cloud_, template_cloud_);
             publishPointCloud(points);
         }
@@ -120,15 +133,6 @@ class MergePointClouds
             publishPointCloud(transformed_cloud);
         }
 */
-    private:
-        pcl::PointCloud<pcl::PointXYZ>::Ptr incoming_pc_, merged_pc_, cur_pc;
-        tf::Transform tf_transform;
-        tf::TransformListener tf_listener;
-        bool has_target_pc_, has_template_cloud_;
-        float min_sample_distance_, max_correspondence_distance_;
-        int nr_iterations_;
-        pcl::SampleConsensusInitialAlignment<pcl::PointXYZ, pcl::PointXYZ, pcl::FPFHSignature33> sac_ia_;
-
 };
 
 /*
