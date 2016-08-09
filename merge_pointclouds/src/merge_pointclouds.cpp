@@ -3,7 +3,9 @@
 #include <vector>
 #include <pcl/point_types.h>
 #include <pcl/point_cloud.h>
+#include <pcl/filters/passthrough.h>
 #include <pcl/filters/voxel_grid.h>
+#include <pcl/filters/statistical_outlier_removal.h>
 
 #include <ros/ros.h>
 #include <std_srvs/Trigger.h>
@@ -12,47 +14,72 @@
 #include <pcl_ros/transforms.h>
 #include <sensor_msgs/PointCloud2.h>
 
+typedef pcl::PointXYZRGB PointT;
 
 class MergePointClouds
 {
-    std::string merge_frame;
+    std::string merge_frame, node_name;
     float min_sample_distance_, max_correspondence_distance_;
-    int nr_iterations_;
+    int pc_count;
     bool run_scan;
     ros::ServiceServer triggerMergeService;
-    pcl::PointCloud<pcl::PointXYZRGB>::Ptr incoming_pc, merged_pc;
+    pcl::PointCloud<PointT>::Ptr incoming_pc, merged_pc;
     tf::TransformListener *tf_listener;
     ros::NodeHandle nh;
     ros::Subscriber pc_sub;
     ros::Publisher pc_pub;
-    pcl::VoxelGrid<pcl::PCLPointCloud2> *voxel_grid_filter;
+    pcl::StatisticalOutlierRemoval<PointT> *outlier_filter;
+    pcl::PassThrough<PointT> *passthrough_filter;
+    pcl::VoxelGrid<PointT> *voxel_grid_filter;
+    ros::Timer sendMergedTimer;
 
     public:
         MergePointClouds(): nh("~"),
                             tf_listener(new tf::TransformListener),
-                            incoming_pc(new pcl::PointCloud<pcl::PointXYZRGB>),
-                            merged_pc(new pcl::PointCloud<pcl::PointXYZRGB>),
-                            nr_iterations_(500),
+                            incoming_pc(new pcl::PointCloud<PointT>),
+                            merged_pc(new pcl::PointCloud<PointT>),
+                            pc_count(0),
                             run_scan(false),
-                            voxel_grid_filter(new pcl::VoxelGrid<pcl::PCLPointCloud2>)
+                            outlier_filter(new pcl::StatisticalOutlierRemoval<PointT>),
+                            passthrough_filter(new pcl::PassThrough<PointT>),
+                            voxel_grid_filter(new pcl::VoxelGrid<PointT>)
         {
+            node_name = ros::this_node::getName();
             pc_sub = nh.subscribe("/head_mount_kinect/sd/points", 1, &MergePointClouds::pcCallback, this);
-            pc_pub = nh.advertise< pcl::PointCloud<pcl::PointXYZ> > ("merged_points", 1);
+            pc_pub = nh.advertise< pcl::PointCloud<PointT> > ("merged_points", 1);
             nh.param<std::string>("merge_frame", merge_frame, "/base_footprint");
             triggerMergeService  = nh.advertiseService("trigger_scan", &MergePointClouds::triggerScanCallback, this);
-            voxel_grid_filter->setLeafSize(0.01f, 0.01f, 0.01f);
+            voxel_grid_filter->setLeafSize(0.02f, 0.02f, 0.02f);
+            outlier_filter->setMeanK(6);
+            outlier_filter->setStddevMulThresh(0.3);
+            ROS_INFO("[%s] Ready", node_name.c_str());
         };
         ~MergePointClouds(){};
 
-        void publishPointCloud(pcl::PointCloud<pcl::PointXYZRGB>::Ptr pc_out)
+        void sendMerged(const ros::TimerEvent&) {
+            ROS_INFO("[%s] Scan Complete: Merged %i pointclouds", node_name.c_str(), pc_count);
+            run_scan = false;  // Stop run
+            pc_count = 0; // Reset count for next run
+
+            // Downsample via voxelGrid
+            voxel_grid_filter->setInputCloud(merged_pc);
+            voxel_grid_filter->filter(*merged_pc);
+
+            publishPointCloud(merged_pc);  // Publish results
+            merged_pc->clear();
+        };
+
+        void publishPointCloud(pcl::PointCloud<PointT>::Ptr pc_out)
         {
             pc_out->header.frame_id = merge_frame;
             pc_pub.publish(pc_out);
-            ROS_INFO("Publishing PointCloud");
+            ROS_INFO("[%s] Publishing Merged Scan PointCloud", node_name.c_str());
         }
 
         bool triggerScanCallback(std_srvs::Trigger::Request& request, std_srvs::Trigger::Response& response) {
+            ROS_INFO("[%s] Starting Scan", node_name.c_str());
             run_scan = true;
+            sendMergedTimer = nh.createTimer(ros::Duration(15), &MergePointClouds::sendMerged, this, true);
             response.success = true;
             response.message = "Starting Scan";
             return true;
@@ -65,7 +92,6 @@ class MergePointClouds
             // Convert ros msg to pcl
             pcl::fromROSMsg(*pc_msg, *incoming_pc); 
             // Remove NAN's
-            pcl::PointCloud<pcl::PointXYZ>::Ptr points(new pcl::PointCloud<pcl::PointXYZ>());
             std::vector<int> inds;
             pcl::removeNaNFromPointCloud(*incoming_pc, *incoming_pc, inds);
             // Transform to common/base frame based on tf
@@ -79,16 +105,28 @@ class MergePointClouds
                 return;
             }
             pcl_ros::transformPointCloud("/base_link", *incoming_pc, *incoming_pc, *tf_listener);
-            // More carefully align via icp/other methods?
-            ROS_INFO("Cloud Transformed");
-//            align(target_cloud_, template_cloud_);
-
-//            filterTargetCloud(points);
-//            pcl::concatenatePointCloud(*incoming_pc, *merged_pc, *merged_pc);
+            passthrough_filter->filter(*incoming_pc);
+            // Filter along X-axis
+            passthrough_filter->setFilterFieldName("x");
+            passthrough_filter->setFilterLimits(-1.0f, 3.0f);
+            passthrough_filter->setInputCloud(incoming_pc);
+            // Filter along Y-axis
+            passthrough_filter->setFilterFieldName("y");
+            passthrough_filter->setFilterLimits(-3.0f, 3.0f);
+            passthrough_filter->filter(*incoming_pc);
+            // Filter along Z-axis
+            passthrough_filter->setFilterFieldName("z");
+            passthrough_filter->setFilterLimits(-0.1f, 2.0f);
+            passthrough_filter->filter(*incoming_pc);
+            // Downsample via voxelGrid
             voxel_grid_filter->setInputCloud(incoming_pc);
             voxel_grid_filter->filter(*incoming_pc);
+            // Remove statistical outliers
+            outlier_filter->setInputCloud(incoming_pc);
+            outlier_filter->filter(*incoming_pc);
             *merged_pc += *incoming_pc;
-            publishPointCloud(merged_pc);
+            pc_count += 1;
+            ROS_INFO("[%s] Merged pointcloud", node_name.c_str());
         }
 
 /*        void filterTargetCloud(pcl::PointCloud<pcl::PointXYZ>::Ptr target_cloud)
