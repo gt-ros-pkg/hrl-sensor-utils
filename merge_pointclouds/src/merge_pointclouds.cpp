@@ -1,19 +1,9 @@
 #include <limits>
 #include <fstream>
 #include <vector>
-#include <Eigen/Core>
 #include <pcl/point_types.h>
 #include <pcl/point_cloud.h>
-#include <pcl/kdtree/kdtree_flann.h>
-#include <pcl/filters/passthrough.h>
 #include <pcl/filters/voxel_grid.h>
-#include <pcl/features/normal_3d.h>
-#include <pcl/features/fpfh.h>
-
-#include <pcl/registration/ia_ransac.h>
-#include <pcl/registration/icp.h>
-#include <pcl/registration/icp_nl.h>
-#include <pcl/registration/transforms.h>
 
 #include <ros/ros.h>
 #include <std_srvs/Trigger.h>
@@ -28,66 +18,77 @@ class MergePointClouds
     std::string merge_frame;
     float min_sample_distance_, max_correspondence_distance_;
     int nr_iterations_;
+    bool run_scan;
     ros::ServiceServer triggerMergeService;
-    pcl::PointCloud<pcl::PointXYZ>::Ptr incoming_pc, transformed_pc, merged_pc;
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr incoming_pc, merged_pc;
     tf::TransformListener *tf_listener;
-    pcl::SampleConsensusInitialAlignment<pcl::PointXYZ, pcl::PointXYZ, pcl::FPFHSignature33> sac_ia_;
+    ros::NodeHandle nh;
+    ros::Subscriber pc_sub;
+    ros::Publisher pc_pub;
+    pcl::VoxelGrid<pcl::PCLPointCloud2> *voxel_grid_filter;
 
     public:
-        ros::NodeHandle nh;
-        ros::Subscriber pc_sub;
-        ros::Publisher pc_pub;
-             
         MergePointClouds(): nh("~"),
                             tf_listener(new tf::TransformListener),
-                            incoming_pc(new pcl::PointCloud<pcl::PointXYZ>),
-                            transformed_pc(new pcl::PointCloud<pcl::PointXYZ>),
-                            merged_pc(new pcl::PointCloud<pcl::PointXYZ>),
-                            min_sample_distance_(0.05f),
-                            max_correspondence_distance_(0.01f*0.01f),
-                            nr_iterations_(500)
+                            incoming_pc(new pcl::PointCloud<pcl::PointXYZRGB>),
+                            merged_pc(new pcl::PointCloud<pcl::PointXYZRGB>),
+                            nr_iterations_(500),
+                            run_scan(false),
+                            voxel_grid_filter(new pcl::VoxelGrid<pcl::PCLPointCloud2>)
         {
             pc_sub = nh.subscribe("/head_mount_kinect/sd/points", 1, &MergePointClouds::pcCallback, this);
             pc_pub = nh.advertise< pcl::PointCloud<pcl::PointXYZ> > ("merged_points", 1);
-            sac_ia_.setMinSampleDistance (min_sample_distance_);
-            sac_ia_.setMaxCorrespondenceDistance (max_correspondence_distance_);
-            sac_ia_.setMaximumIterations (nr_iterations_);
             nh.param<std::string>("merge_frame", merge_frame, "/base_footprint");
             triggerMergeService  = nh.advertiseService("trigger_scan", &MergePointClouds::triggerScanCallback, this);
+            voxel_grid_filter->setLeafSize(0.01f, 0.01f, 0.01f);
         };
         ~MergePointClouds(){};
 
-        void publishPointCloud(pcl::PointCloud<pcl::PointXYZ>::Ptr pc_out)
+        void publishPointCloud(pcl::PointCloud<pcl::PointXYZRGB>::Ptr pc_out)
         {
-//            pc_out->header.frame_id = "head_mount_kinect_rgb_optical_frame";
+            pc_out->header.frame_id = merge_frame;
             pc_pub.publish(pc_out);
             ROS_INFO("Publishing PointCloud");
         }
 
+        bool triggerScanCallback(std_srvs::Trigger::Request& request, std_srvs::Trigger::Response& response) {
+            run_scan = true;
+            response.success = true;
+            response.message = "Starting Scan";
+            return true;
+        }
+
         void pcCallback(sensor_msgs::PointCloud2::ConstPtr pc_msg)
         {
-            ROS_INFO("Point Cloud Msg Received");
+            // Only run when service is called to start run
+            if (!run_scan) { return; };
+            // Convert ros msg to pcl
             pcl::fromROSMsg(*pc_msg, *incoming_pc); 
-            ROS_INFO("Converted to PCL");
-
-            ROS_INFO("Waiting for Transform");
-            try{
-                tf_listener->waitForTransform("/base_link", (*pc_msg).header.frame_id, ros::Time(0), ros::Duration(10.0));
+            // Remove NAN's
+            pcl::PointCloud<pcl::PointXYZ>::Ptr points(new pcl::PointCloud<pcl::PointXYZ>());
+            std::vector<int> inds;
+            pcl::removeNaNFromPointCloud(*incoming_pc, *incoming_pc, inds);
+            // Transform to common/base frame based on tf
+            try {
+                tf_listener->waitForTransform("/base_link",
+                                              (*pc_msg).header.frame_id, 
+                                              (*pc_msg).header.stamp,
+                                              ros::Duration(10.0));
             } catch (tf::TransformException ex) {
                 ROS_ERROR("%s", ex.what());
                 return;
             }
-
-            ROS_INFO("Preparing to Transform Cloud");
-            pcl_ros::transformPointCloud("/base_link", *incoming_pc, *transformed_pc, *tf_listener);
+            pcl_ros::transformPointCloud("/base_link", *incoming_pc, *incoming_pc, *tf_listener);
+            // More carefully align via icp/other methods?
             ROS_INFO("Cloud Transformed");
-            pcl::PointCloud<pcl::PointXYZ>::Ptr points(new pcl::PointCloud<pcl::PointXYZ>());
-            std::vector<int> inds;
-            pcl::removeNaNFromPointCloud(*transformed_pc, *points, inds);
-            ROS_INFO("NAN's Filtered.");
-//            filterTargetCloud(points);
 //            align(target_cloud_, template_cloud_);
-            publishPointCloud(points);
+
+//            filterTargetCloud(points);
+//            pcl::concatenatePointCloud(*incoming_pc, *merged_pc, *merged_pc);
+            voxel_grid_filter->setInputCloud(incoming_pc);
+            voxel_grid_filter->filter(*incoming_pc);
+            *merged_pc += *incoming_pc;
+            publishPointCloud(merged_pc);
         }
 
 /*        void filterTargetCloud(pcl::PointCloud<pcl::PointXYZ>::Ptr target_cloud)
@@ -144,6 +145,12 @@ class MergePointClouds
 };
 
 /*
+#include <Eigen/Core>
+#include <pcl/registration/ia_ransac.h>
+#include <pcl/registration/icp.h>
+#include <pcl/registration/icp_nl.h>
+#include <pcl/registration/transforms.h>
+
 using pcl::visualization::PointCloudColorHandlerGenericField;
 using pcl::visualization::PointCloudColorHandlerCustom;
 
