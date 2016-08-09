@@ -53,7 +53,7 @@ class MergePointClouds
             voxel_grid_filter->setLeafSize(0.02f, 0.02f, 0.02f);
             outlier_filter->setMeanK(7);
             outlier_filter->setStddevMulThresh(0.1);
-            limitingTimer = nh.createTimer(ros::Duration(20), &MergePointClouds::stopMergeTimeout, this, false);
+            limitingTimer = nh.createTimer(ros::Duration(20), &MergePointClouds::stopMergeTimeout, this, false, false);
             ROS_INFO("[%s] Ready", node_name.c_str());
         };
         ~MergePointClouds(){};

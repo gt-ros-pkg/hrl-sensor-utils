@@ -42,6 +42,7 @@
                           <run_depend>hrl_ft</run_depend>
                           <run_depend>hrl_clickable_display</run_depend>
                           <run_depend>pixel_2_3d</run_depend>
+                          <run_depend>merge_pointclouds</run_depend>
 
                           <!-- The export tag contains other, unspecified, tags -->
                           <export>
