@@ -1,9 +1,11 @@
 #include <vector>
+#include <Eigen/Dense>
 #include <pcl/point_types.h>
 #include <pcl/point_cloud.h>
 #include <pcl/filters/passthrough.h>
 #include <pcl/filters/voxel_grid.h>
 #include <pcl/filters/statistical_outlier_removal.h>
+#include <pcl/filters/crop_box.h>
 
 #include <ros/ros.h>
 #include <std_srvs/Trigger.h>
@@ -31,6 +33,7 @@ class MergePointClouds
     pcl::StatisticalOutlierRemoval<PointT> *outlier_filter;
     pcl::PassThrough<PointT> *passthrough_filter;
     pcl::VoxelGrid<PointT> *voxel_grid_filter;
+    pcl::CropBox<PointT> *crop_box_filter;
     ros::Timer limitingTimer;
 
     public:
@@ -42,7 +45,8 @@ class MergePointClouds
                             run_scan(false),
                             outlier_filter(new pcl::StatisticalOutlierRemoval<PointT>),
                             passthrough_filter(new pcl::PassThrough<PointT>),
-                            voxel_grid_filter(new pcl::VoxelGrid<PointT>)
+                            voxel_grid_filter(new pcl::VoxelGrid<PointT>),
+                            crop_box_filter(new pcl::CropBox<PointT>)
         {
             node_name = ros::this_node::getName();
             pc_sub = nh.subscribe("/head_mount_kinect/sd/points", 1, &MergePointClouds::pcCallback, this);
@@ -53,6 +57,8 @@ class MergePointClouds
             voxel_grid_filter->setLeafSize(0.02f, 0.02f, 0.02f);
             outlier_filter->setMeanK(7);
             outlier_filter->setStddevMulThresh(0.1);
+            crop_box_filter->setMin(Eigen::Vector4f(-0.5, -2.0, 0.1, 0.0));
+            crop_box_filter->setMax(Eigen::Vector4f(2.0, 2.0, 2.0, 0.0));
             limitingTimer = nh.createTimer(ros::Duration(20), &MergePointClouds::stopMergeTimeout, this, false, false);
             ROS_INFO("[%s] Ready", node_name.c_str());
         };
@@ -126,19 +132,23 @@ class MergePointClouds
                 return;
             }
             pcl_ros::transformPointCloud("/base_link", *incoming_pc, *incoming_pc, *tf_listener);
-            passthrough_filter->filter(*incoming_pc);
-            // Filter along X-axis
-            passthrough_filter->setFilterFieldName("x");
-            passthrough_filter->setFilterLimits(-1.0f, 3.0f);
-            passthrough_filter->setInputCloud(incoming_pc);
-            // Filter along Y-axis
-            passthrough_filter->setFilterFieldName("y");
-            passthrough_filter->setFilterLimits(-3.0f, 3.0f);
-            passthrough_filter->filter(*incoming_pc);
-            // Filter along Z-axis
-            passthrough_filter->setFilterFieldName("z");
-            passthrough_filter->setFilterLimits(0.02f, 2.0f);
-            passthrough_filter->filter(*incoming_pc);
+            // Filter out points near robot (crude self-filter)
+            crop_box_filter->setInputCloud(incoming_pc);
+            crop_box_filter->filter(*incoming_pc);
+            // Passthrough filters to remove far-away data
+//            passthrough_filter->filter(*incoming_pc);
+//            // Filter along X-axis
+//            passthrough_filter->setFilterFieldName("x");
+//            passthrough_filter->setFilterLimits(-0.5f, 2.0f);
+//            passthrough_filter->setInputCloud(incoming_pc);
+//            // Filter along Y-axis
+//            passthrough_filter->setFilterFieldName("y");
+//            passthrough_filter->setFilterLimits(-2.0f, 2.0f);
+//            passthrough_filter->filter(*incoming_pc);
+//            // Filter along Z-axis
+//            passthrough_filter->setFilterFieldName("z");
+//            passthrough_filter->setFilterLimits(0.05f, 1.8f);
+//            passthrough_filter->filter(*incoming_pc);
             *merged_pc += *incoming_pc;
             pc_count += 1;
 //            ROS_INFO("[%s] Merged pointcloud", node_name.c_str());
