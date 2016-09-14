@@ -20,7 +20,7 @@ typedef pcl::PointXYZRGB PointT;
 class MergePointClouds
 {
     std::string merge_frame, node_name;
-    float min_sample_distance_, max_correspondence_distance_;
+    float voxel_x, voxel_y, voxel_z;
     int pc_count;
     bool run_scan;
     ros::ServiceServer triggerMergeService, returnMergedService;
@@ -46,12 +46,15 @@ class MergePointClouds
                             crop_box_filter(new pcl::CropBox<PointT>)
         {
             node_name = ros::this_node::getName();
-            pc_sub = nh.subscribe("/head_mount_kinect/sd/points", 1, &MergePointClouds::pcCallback, this);
+            pc_sub = nh.subscribe("input_pc", 1, &MergePointClouds::pcCallback, this);
             pc_pub = nh.advertise< pcl::PointCloud<PointT> > ("merged_points", 1);
             nh.param<std::string>("merge_frame", merge_frame, "/base_footprint");
+            nh.param<float>("voxel_x", voxel_x, 0.02f);
+            nh.param<float>("voxel_y", voxel_y, 0.02f);
+            nh.param<float>("voxel_z", voxel_z, 0.02f);
             triggerMergeService  = nh.advertiseService("new_merge", &MergePointClouds::triggerCallback, this);
             returnMergedService  = nh.advertiseService("get_merged_pointcloud", &MergePointClouds::returnMerged, this);
-            voxel_grid_filter->setLeafSize(0.02f, 0.02f, 0.02f);
+            voxel_grid_filter->setLeafSize(voxel_x, voxel_y, voxel_z);
             outlier_filter->setMeanK(7);
             outlier_filter->setStddevMulThresh(0.1);
             limitingTimer = nh.createTimer(ros::Duration(20), &MergePointClouds::stopMergeTimeout, this, false, false);
